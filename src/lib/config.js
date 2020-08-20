@@ -1,17 +1,17 @@
-var dns = require('dns');
+let dns = require('dns');
 
-var getMongoPodLabels = function() {
+let getMongoPodLabels = function() {
   return process.env.MONGO_SIDECAR_POD_LABELS || false;
 };
 
-var getMongoPodLabelCollection = function() {
-  var podLabels = getMongoPodLabels();
+let getMongoPodLabelCollection = function() {
+  let podLabels = getMongoPodLabels();
   if (!podLabels) {
     return false;
   }
-  var labels = process.env.MONGO_SIDECAR_POD_LABELS.split(',');
-  for (var i in labels) {
-    var keyAndValue = labels[i].split('=');
+  let labels = process.env.MONGO_SIDECAR_POD_LABELS.split(',');
+  for (let i in labels) {
+    let keyAndValue = labels[i].split('=');
     labels[i] = {
       key: keyAndValue[0],
       value: keyAndValue[1]
@@ -21,7 +21,7 @@ var getMongoPodLabelCollection = function() {
   return labels;
 };
 
-var getk8sROServiceAddress = function() {
+let getk8sROServiceAddress = function() {
   return process.env.KUBERNETES_SERVICE_HOST + ":" + process.env.KUBERNETES_SERVICE_PORT
 };
 
@@ -29,8 +29,8 @@ var getk8sROServiceAddress = function() {
  * @returns k8sClusterDomain should the name of the kubernetes domain where the cluster is running.
  * Can be convigured via the environmental variable 'KUBERNETES_CLUSTER_DOMAIN'.
  */
-var getK8sClusterDomain = function() {
-  var domain = process.env.KUBERNETES_CLUSTER_DOMAIN || "cluster.local";
+let getK8sClusterDomain = function() {
+  let domain = process.env.KUBERNETES_CLUSTER_DOMAIN || "cluster.local";
   verifyCorrectnessOfDomain(domain);
   return domain;
 };
@@ -40,12 +40,12 @@ var getK8sClusterDomain = function() {
  * Raises a console warning if that is not the case.
  * @param clusterDomain the domain to verify.
  */
-var verifyCorrectnessOfDomain = function(clusterDomain) {
+let verifyCorrectnessOfDomain = function(clusterDomain) {
   if (!clusterDomain) {
     return;
   }
 
-  var servers = dns.getServers();
+  let servers = dns.getServers();
   if (!servers || !servers.length) {
     console.log("dns.getServers() didn't return any results when verifying the cluster domain '%s'.", clusterDomain);
     return;
@@ -68,15 +68,15 @@ var verifyCorrectnessOfDomain = function(clusterDomain) {
 /**
  * @returns k8sMongoServiceName should be the name of the (headless) k8s service operating the mongo pods.
  */
-var getK8sMongoServiceName = function() {
+let getK8sMongoServiceName = function() {
   return process.env.KUBERNETES_MONGO_SERVICE_NAME || false;
 };
 
 /**
  * @returns mongoPort this is the port on which the mongo instances run. Default is 27017.
  */
-var getMongoDbPort = function() {
-  var mongoPort = process.env.MONGO_PORT || 27017;
+let getMongoDbPort = function() {
+  let mongoPort = process.env.MONGO_PORT || 27017;
   console.log("Using mongo port: %s", mongoPort);
   return mongoPort;
 };
@@ -84,9 +84,9 @@ var getMongoDbPort = function() {
 /**
  *  @returns boolean to define the RS as a configsvr or not. Default is false
  */
-var isConfigRS = function() {
-  var configSvr = (process.env.CONFIG_SVR || '').trim().toLowerCase();
-  var configSvrBool = /^(?:y|yes|true|1)$/i.test(configSvr);
+let isConfigRS = function() {
+  let configSvr = (process.env.CONFIG_SVR || '').trim().toLowerCase();
+  let configSvrBool = /^(?:y|yes|true|1)$/i.test(configSvr);
   if (configSvrBool) {
     console.log("ReplicaSet is configured as a configsvr");
   }
@@ -97,10 +97,8 @@ var isConfigRS = function() {
 /**
  * @returns boolean
  */
-var stringToBool = function(boolStr) {
-  var isTrue = ( boolStr === 'true' ) || false;
-
-  return isTrue;
+let stringToBool = function(boolStr) {
+  return ( boolStr === 'true' ) || false;;
 };
 
 module.exports = {

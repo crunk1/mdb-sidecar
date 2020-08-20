@@ -1,4 +1,4 @@
-var worker = require('./lib/worker');
+let worker = require('./lib/worker');
 
 console.log('Starting up mongo-k8s-sidecar');
 

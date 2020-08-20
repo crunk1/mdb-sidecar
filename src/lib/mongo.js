@@ -1,11 +1,11 @@
-var Db = require('mongodb').Db;
-var MongoServer = require('mongodb').Server;
-var async = require('async');
-var config = require('./config');
+let Db = require('mongodb').Db;
+let MongoServer = require('mongodb').Server;
+let async = require('async');
+let config = require('./config');
 
-var localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
+let localhost = '127.0.0.1'; //Can access mongo as localhost from a sidecar
 
-var getDb = function(host, done) {
+let getDb = function(host, done) {
   //If they called without host like getDb(function(err, db) { ... });
   if (arguments.length === 1) {
     if (typeof arguments[0] === 'function') {
@@ -16,7 +16,7 @@ var getDb = function(host, done) {
     }
   }
 
-  var mongoOptions = {};
+  let mongoOptions = {};
   host = host || localhost;
 
   if (config.mongoSSLEnabled) {
@@ -27,7 +27,7 @@ var getDb = function(host, done) {
     }
   }
 
-  var mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort, mongoOptions));
+  let mongoDb = new Db(config.database, new MongoServer(host, config.mongoPort, mongoOptions));
 
   mongoDb.open(function (err, db) {
     if (err) {
@@ -49,7 +49,7 @@ var getDb = function(host, done) {
   });
 };
 
-var replSetGetConfig = function(db, done) {
+let replSetGetConfig = function(db, done) {
   db.admin().command({ replSetGetConfig: 1 }, {}, function (err, results) {
     if (err) {
       return done(err);
@@ -59,7 +59,7 @@ var replSetGetConfig = function(db, done) {
   });
 };
 
-var replSetGetStatus = function(db, done) {
+let replSetGetStatus = function(db, done) {
   db.admin().command({ replSetGetStatus: {} }, {}, function (err, results) {
     if (err) {
       return done(err);
@@ -69,7 +69,7 @@ var replSetGetStatus = function(db, done) {
   });
 };
 
-var initReplSet = function(db, hostIpAndPort, done) {
+let initReplSet = function(db, hostIpAndPort, done) {
   console.log('initReplSet', hostIpAndPort);
 
   db.admin().command({ replSetInitiate: {} }, {}, function (err) {
@@ -99,7 +99,7 @@ var initReplSet = function(db, hostIpAndPort, done) {
   });
 };
 
-var replSetReconfig = function(db, rsConfig, force, done) {
+let replSetReconfig = function(db, rsConfig, force, done) {
   console.log('replSetReconfig', rsConfig);
 
   rsConfig.version++;
@@ -113,7 +113,7 @@ var replSetReconfig = function(db, rsConfig, force, done) {
   });
 };
 
-var addNewReplSetMembers = function(db, addrToAdd, addrToRemove, shouldForce, done) {
+let addNewReplSetMembers = function(db, addrToAdd, addrToRemove, shouldForce, done) {
   replSetGetConfig(db, function(err, rsConfig) {
     if (err) {
       return done(err);
@@ -127,22 +127,22 @@ var addNewReplSetMembers = function(db, addrToAdd, addrToRemove, shouldForce, do
   });
 };
 
-var addNewMembers = function(rsConfig, addrsToAdd) {
+let addNewMembers = function(rsConfig, addrsToAdd) {
   if (!addrsToAdd || !addrsToAdd.length) return;
 
-  var memberIds = [];
-  var newMemberId = 0;
+  let memberIds = [];
+  let newMemberId = 0;
 
   // Build a list of existing rs member IDs
-  for (var i in rsConfig.members) {
+  for (let i in rsConfig.members) {
     memberIds.push(rsConfig.members[i]._id);
   }
 
-  for (var i in addrsToAdd) {
-    var addrToAdd = addrsToAdd[i];
+  for (let i in addrsToAdd) {
+    let addrToAdd = addrsToAdd[i];
 
     // Search for the next available member ID (max 255)
-    for (var i = newMemberId; i <= 255; i++) {
+    for (let i = newMemberId; i <= 255; i++) {
       if (!memberIds.includes(i)) {
         newMemberId = i;
         memberIds.push(newMemberId);
@@ -152,9 +152,9 @@ var addNewMembers = function(rsConfig, addrsToAdd) {
 
     // Somehow we can get a race condition where the member config has been updated since we created the list of
     // addresses to add (addrsToAdd) ... so do another loop to make sure we're not adding duplicates
-    var exists = false;
-    for (var j in rsConfig.members) {
-      var member = rsConfig.members[j];
+    let exists = false;
+    for (let j in rsConfig.members) {
+      let member = rsConfig.members[j];
       if (member.host === addrToAdd) {
         console.log("Host [%s] already exists in the Replicaset. Not adding...", addrToAdd);
         exists = true;
@@ -166,7 +166,7 @@ var addNewMembers = function(rsConfig, addrsToAdd) {
       continue;
     }
 
-    var cfg = {
+    let cfg = {
       _id: newMemberId,
       host: addrToAdd
     };
@@ -175,13 +175,13 @@ var addNewMembers = function(rsConfig, addrsToAdd) {
   }
 };
 
-var removeDeadMembers = function(rsConfig, addrsToRemove) {
+let removeDeadMembers = function(rsConfig, addrsToRemove) {
   if (!addrsToRemove || !addrsToRemove.length) return;
 
-  for (var i in addrsToRemove) {
-    var addrToRemove = addrsToRemove[i];
-    for (var j in rsConfig.members) {
-      var member = rsConfig.members[j];
+  for (let i in addrsToRemove) {
+    let addrToRemove = addrsToRemove[i];
+    for (let j in rsConfig.members) {
+      let member = rsConfig.members[j];
       if (member.host === addrToRemove) {
         rsConfig.members.splice(j, 1);
         break;
@@ -190,7 +190,7 @@ var removeDeadMembers = function(rsConfig, addrsToRemove) {
   }
 };
 
-var isInReplSet = function(ip, done) {
+let isInReplSet = function(ip, done) {
   getDb(ip, function(err, db) {
     if (err) {
       return done(err);
