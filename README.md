@@ -1,38 +1,31 @@
-# Mongo Kubernetes Replica Set Sidecar
+# MongoDB Kubernetes Sidecar
+Container image: gcr.io/scware-project/mdb-sidecar
 
-This project is as a PoC to setup a mongo replica set using Kubernetes. It should handle resizing of any type and be
-resilient to the various conditions both mongo and kubernetes can find themselves in.
+This sidecar runs in each mongo instance's pod and is responsible for the following:
+- initializing and resizing the mongo replica set
+- setting up the initial admin user and password
+- creating a service to expose the replica set primary; service will be named ${RS_SVC}-primary
 
 ## How to use it
+1. (Optional) Create a Namespace for this MongoDB Replica Set resources.
+2. Create a ServiceAccount, a ClusterRole (allowing get/list/patch on Pods and create/get/list on Services), and a ClusterRoleBinding binding them together.
+3. Create a StatefulSet with a pod template spec containing a mongo container and this sidecar container.
+    1. Set the Pod template spec `serviceAccountName` to the ServiceAccount created in 2.
+    2. Configure mongo containers' replica set configuration (via command flags, mounted ConfigMap volumes, etc).
+    3. Configure the sidecar containers' environment variables. See Environment Variables below.
+4. Create a headless Service for the StatefulSet.
 
-The docker image is hosted on docker hub and can be found here:
-https://hub.docker.com/r/cvallance/mongo-k8s-sidecar/
-
-An example kubernetes replication controller can be found in the examples directory on github here:
-https://github.com/cvallance/mongo-k8s-sidecar
-
-There you will also find some helper scripts to test out creating the replica set and resizing it.
-
-### Settings
+### Environment Variables
 
 | Environment Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| KUBE_NAMESPACE | NO |  | The namespace to look up pods in. Not setting it will search for pods in all namespaces. |
-| MONGO_SIDECAR_POD_LABELS | YES |  | This should be a comma separated list of key values the same as the podTemplate labels. See above for example. |
-| MONGO_SIDECAR_SLEEP_SECONDS | NO | 5 | This is how long to sleep between work cycles. |
-| MONGO_SIDECAR_UNHEALTHY_SECONDS | NO | 15 | This is how many seconds a replica set member has to get healthy before automatically being removed from the replica set. |
-| MONGO_PORT | NO | 27017 | Configures the mongo port, allows the usage of non-standard ports. |
-| CONFIG_SVR | NO | false | Configures the [configsvr](https://docs.mongodb.com/manual/reference/replica-configuration/#rsconf.configsvr) variable when initializing the replicaset. |
-| KUBERNETES_MONGO_SERVICE_NAME | NO |  | This should point to the MongoDB Kubernetes (headless) service that identifies all the pods. It is used for setting up the DNS configuration for the mongo pods, instead of the default pod IPs. Works only with the StatefulSets' stable network ID. |
-| KUBERNETES_CLUSTER_DOMAIN | NO | cluster.local | This allows the specification of a custom cluster domain name. Used for the creation of a stable network ID of the k8s Mongo   pods. An example could be: "kube.local". |
-| MONGODB_USERNAME | NO | | Configures the mongo username for authentication |
-| MONGODB_PASSWORD | NO | | Configures the mongo password for authentication |
-| MONGODB_DATABASE | NO | local | Configures the mongo authentication database |
-| MONGO_SSL_ENABLED | NO | false | Enable SSL for MongoDB. |
-| MONGO_SSL_ALLOW_INVALID_CERTIFICATES | NO | true | This should be set to true if you want to use self signed certificates. |
-| MONGO_SSL_ALLOW_INVALID_HOSTNAMES | NO | true | This should be set to true if your certificates FQDN's do not match the host name set in your replset. |
+| NS | NO |  | The Namespace to look up pods in. Not setting it will search for pods in all namespaces. |
+| RS_SVC | YES |  | The headless service of the mongo StatefulSet Pods that makes up the mongo replica set. It is used for setting up the DNS configuration for the mongo pods, instead of the default pod IPs. Works only with the StatefulSets' stable network ID. |
+| MDB_USER | YES | | The admin user to be created/used by sidecars. |
+| MDB_PASS | YES | | The admin pass to be created/used by sidecars. |
+| MDB_PORT | NO | 27017 | Configures the mongo port, allows the usage of non-standard ports. |
 
-In its default configuration the sidecar uses the pods' IPs for the MongodDB replica names. Here is a trimmed example:
+In its default configuration the sidecar uses the pods' IPs for the MongoDB replica names. Here is a trimmed example:
 ```
 [ { _id: 1,
    name: '10.48.0.70:27017',

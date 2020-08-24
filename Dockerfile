@@ -1,13 +1,15 @@
-FROM node:alpine
-MAINTAINER Charles Vallance <vallance.charles@gmail.com>
+FROM golang:1.15.0-alpine3.12 as builder
+RUN mkdir /go-src
+WORKDIR /go-src
 
-WORKDIR /opt/cvallance/mongo-k8s-sidecar
+# Install dependencies first.
+COPY ./go-src/go.mod ./go-src/go.sum ./
+RUN go mod download
 
-COPY package.json /opt/cvallance/mongo-k8s-sidecar/package.json
+# Copy and build src.
+COPY ./go-src/*.go ./
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags '-extldflags "-static"' -o /sidecar
 
-RUN npm install
-
-COPY ./src /opt/cvallance/mongo-k8s-sidecar/src
-COPY .foreverignore /opt/cvallance/.foreverignore
-
-CMD ["npm", "start"]
+FROM scratch
+COPY --from=builder /sidecar /sidecar
+CMD ["/sidecar"]
