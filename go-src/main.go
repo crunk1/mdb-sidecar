@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -10,7 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-const loopSleep = 5 * time.Second
+const loopSleep = 15 * time.Second
 
 func main() {
 	for {
@@ -82,25 +83,57 @@ func mainNotInReplSet(pods []v1.Pod) error {
 	return errors.Errorf("replica set needs created and this is not pod %q, waiting", firstName)
 }
 
+// mainWorkIfPrimary checks if this pod is the primary member; if so, does the following:
+// - add/remove members from replica set as k8s service changes pod members
+// -
 func mainWorkIfPrimary(replSetStatus map[string]interface{}, pods []v1.Pod) error {
-	members, ok := replSetStatus["members"].(primitive.A)
+	membersStatuses, ok := replSetStatus["members"].(primitive.A)
 	if !ok {
 		return errors.New("can't parse members from replSet status")
 	}
 
 	isPrimary := false
-	for _, memberI := range members {
-		member, ok := memberI.(map[string]interface{})
+	for _, memberStatusI := range membersStatuses {
+		memberStatus, ok := memberStatusI.(map[string]interface{})
 		if !ok {
 			return errors.New("can't parse member from replSet status members")
 		}
-		if member["name"] == cfg.podFQDNAndPort && member["stateStr"] == "PRIMARY" {
+		if memberStatus["name"] == cfg.podFQDNAndPort && memberStatus["stateStr"] == "PRIMARY" {
 			isPrimary = true
 			break
 		}
 	}
-	if isPrimary {
-		fmt.Println("IS PRIMARY")
+	if !isPrimary {
+		return nil // Not PRIMARY, no work to do.
 	}
+
+	// PRIMARY work: sync replica set members with k8s service pods.
+	// TODO: don't do reconfig if members are the same
+	rsConfig, err := mongoReplSetGetConfig(nil)
+	if err != nil {
+		return err
+	}
+	rsConfig, ok = rsConfig["config"].(map[string]interface{})
+	if !ok {
+		return errors.New("can't parse replica set config")
+	}
+	var members []map[string]interface{}
+	for _, pod := range pods {
+		ord, err := podOrd(&pod)
+		if err != nil {
+			return err
+		}
+		members = append(members, map[string]interface{}{
+			"_id":  ord,
+			"host": podFQDNAndPort(&pod),
+		})
+	}
+	sort.Slice(members, func(i int, j int) bool { return members[i]["_id"].(uint8) < members[j]["_id"].(uint8) })
+	rsConfig["members"] = members
+	err = mongoReplSetReconfig(nil, rsConfig)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

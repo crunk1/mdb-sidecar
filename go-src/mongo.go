@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -52,6 +53,19 @@ func mongoGetLocalClient() (*mongo.Client, error) {
 	return mongoLocalClient, nil
 }
 
+func mongoReplSetGetConfig(c *mongo.Client) (map[string]interface{}, error) {
+	var err error
+	if c == nil {
+		c, err = mongoGetLocalClient()
+		if err != nil {
+			return nil, err
+		}
+	}
+	result := map[string]interface{}{}
+	err = c.Database("admin").RunCommand(context.Background(), map[string]interface{}{"replSetGetConfig": 1}).Decode(&result)
+	return result, errors.WithStack(err)
+}
+
 // mongoReplSetGetStatus gets the rs status for a mongo instance
 // If it works with no errors, instances is in the rs
 // If an error, instance is not in the rs
@@ -67,6 +81,18 @@ func mongoReplSetGetStatus(c *mongo.Client) (map[string]interface{}, error) {
 	result := map[string]interface{}{}
 	err = c.Database("admin").RunCommand(context.Background(), map[string]interface{}{"replSetGetStatus": 1}).Decode(&result)
 	return result, errors.WithStack(err)
+}
+
+func mongoReplSetReconfig(c *mongo.Client, config map[string]interface{}) error {
+	var err error
+	if c == nil {
+		c, err = mongoGetLocalClient()
+		if err != nil {
+			return err
+		}
+	}
+	err = c.Database("admin").RunCommand(context.Background(), primitive.D{{"replSetReconfig", config}, {"force", true}}).Err()
+	return errors.WithStack(err)
 }
 
 func mongoIsInReplSet(pod *v1.Pod) (bool, error) {
