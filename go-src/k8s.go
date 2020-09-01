@@ -77,8 +77,7 @@ func k8sAddPodLabel(pod *v1.Pod, key string, value string) error {
 	if reflect.DeepEqual(newLabels, pod.Labels) {
 		return nil // No change needed
 	}
-	p := &patch{Op: "replace", Path: "/metadata/labels", Value: newLabels}
-	data, _ := json.Marshal(p)
+	data, _ := json.Marshal([]patch{{Op: "replace", Path: "/metadata/labels", Value: newLabels}})
 	newPod, err := k8sGetClientSet().CoreV1().Pods(cfg.NS).Patch(pod.Name, patchType, data)
 	if err != nil {
 		return errors.WithStack(err)
@@ -107,8 +106,7 @@ func k8sRemovePodLabel(pod *v1.Pod, key string) error {
 	if reflect.DeepEqual(newLabels, pod.Labels) {
 		return nil // No change needed
 	}
-	p := &patch{Op: "replace", Path: "/metadata/labels", Value: newLabels}
-	data, _ := json.Marshal(p)
+	data, _ := json.Marshal([]patch{{Op: "replace", Path: "/metadata/labels", Value: newLabels}})
 	newPod, err := k8sGetClientSet().CoreV1().Pods(cfg.NS).Patch(pod.Name, patchType, data)
 	if err != nil {
 		return errors.WithStack(err)
