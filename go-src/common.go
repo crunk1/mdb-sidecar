@@ -17,6 +17,12 @@ func podFQDNAndPort(pod *v1.Pod) string {
 }
 
 func podOrd(pod *v1.Pod) (uint8, error) {
-	ordinal, err := strconv.ParseUint(pod.Name[len(cfg.RSSvc)+1:], 10, 8)
-	return uint8(ordinal), errors.WithStack(err)
+	var hyphenIdx int
+	for hyphenIdx = len(pod.Name) - 1; hyphenIdx >= 0 && pod.Name[hyphenIdx] != '-'; hyphenIdx-- {
+	}
+	if hyphenIdx == -1 {
+		return 0, errors.New("pod name does not match <statefulset>-<ordinal> format")
+	}
+	ord, err := strconv.ParseUint(pod.Name[hyphenIdx+1:], 10, 8)
+	return uint8(ord), errors.WithStack(err)
 }

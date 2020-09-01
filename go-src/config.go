@@ -5,6 +5,9 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var cfg struct {
@@ -53,13 +56,14 @@ func init() {
 		}
 	}
 
-	ord, err := strconv.ParseUint(cfg.PodName[len(cfg.RSSvc)+1:], 10, 8)
+	var err error
+	fakePod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: cfg.PodName}}
+	cfg.podOrdinal, err = podOrd(fakePod)
 	if err != nil {
 		panic(err)
 	}
-	cfg.podOrdinal = uint8(ord)
-	cfg.podFQDN = fmt.Sprintf("%s.%s.%s.svc.cluster.local", cfg.PodName, cfg.RSSvc, cfg.NS)
-	cfg.podFQDNAndPort = cfg.podFQDN + ":" + strconv.FormatUint(uint64(cfg.MDBPort), 10)
+	cfg.podFQDN = podFQDN(fakePod)
+	cfg.podFQDNAndPort = podFQDNAndPort(fakePod)
 
 	fmt.Printf("Config: %+v\n", cfg)
 }

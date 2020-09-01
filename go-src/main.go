@@ -94,15 +94,11 @@ func mainNotInReplSet(pods []v1.Pod) error {
 	}
 
 	// If this is "first" pod, create replica set.
-	firstName := cfg.RSSvc + "-0"
-	if firstName == cfg.PodName {
-		err := mongoInitReplSet(pods)
-		if err != nil {
-			return err
-		}
+	if cfg.podOrdinal == 0 {
+		return mongoInitReplSet(pods)
 	}
 	// Else, return an error to wait for "first" pod to pick us up.
-	return errors.Errorf("replica set needs created and this is not pod %q, waiting", firstName)
+	return errors.New("replica set needs created and this is not pod 0, waiting")
 }
 
 // mainPrimaryWork is the work for the PRIMARY:
