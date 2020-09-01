@@ -113,6 +113,11 @@ func mainPrimaryWork(pods []v1.Pod) error {
 		return err
 	}
 
+	err = mainPrimaryWorkSyncPrimaryK8sService(pods)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -163,4 +168,20 @@ func mainPrimaryWorkSyncReplSetMembers(pods []v1.Pod) error {
 	}
 	rsConfig["members"] = newMembers
 	return mongoReplSetReconfig(nil, rsConfig)
+}
+
+func mainPrimaryWorkSyncPrimaryK8sService(pods []v1.Pod) error {
+	key := cfg.RSSvc + "-primary"
+	for _, pod := range pods {
+		var err error
+		if pod.Name == cfg.PodName {
+			err = k8sAddPodLabel(&pod, key, "true")
+		} else {
+			err = k8sRemovePodLabel(&pod, key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

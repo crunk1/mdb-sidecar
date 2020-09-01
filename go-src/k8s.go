@@ -1,12 +1,15 @@
 package main
 
 import (
+	"encoding/json"
+	"reflect"
 	"sync"
 
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -52,4 +55,64 @@ func k8sGetService() (*v1.Service, error) {
 		return nil, errors.WithStack(err)
 	}
 	return s, nil
+}
+
+func k8sAddPodLabel(pod *v1.Pod, key string, value string) error {
+	if pod.Labels[key] == value {
+		return nil
+	}
+
+	const patchType = types.JSONPatchType
+	type patch struct {
+		Op    string            `json:"op"`
+		Path  string            `json:"path"`
+		Value map[string]string `json:"value"`
+	}
+
+	newLabels := map[string]string{}
+	for k, v := range pod.Labels {
+		newLabels[k] = v
+	}
+	newLabels[key] = value
+	if reflect.DeepEqual(newLabels, pod.Labels) {
+		return nil // No change needed
+	}
+	p := &patch{Op: "replace", Path: "/metadata/labels", Value: newLabels}
+	data, _ := json.Marshal(p)
+	newPod, err := k8sGetClientSet().CoreV1().Pods(cfg.NS).Patch(pod.Name, patchType, data)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	*pod = *newPod
+	return nil
+}
+
+func k8sRemovePodLabel(pod *v1.Pod, key string) error {
+	if _, ok := pod.Labels[key]; !ok {
+		return nil
+	}
+
+	const patchType = types.JSONPatchType
+	type patch struct {
+		Op    string            `json:"op"`
+		Path  string            `json:"path"`
+		Value map[string]string `json:"value"`
+	}
+
+	newLabels := map[string]string{}
+	for k, v := range pod.Labels {
+		newLabels[k] = v
+	}
+	delete(newLabels, key)
+	if reflect.DeepEqual(newLabels, pod.Labels) {
+		return nil // No change needed
+	}
+	p := &patch{Op: "replace", Path: "/metadata/labels", Value: newLabels}
+	data, _ := json.Marshal(p)
+	newPod, err := k8sGetClientSet().CoreV1().Pods(cfg.NS).Patch(pod.Name, patchType, data)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	*pod = *newPod
+	return nil
 }
